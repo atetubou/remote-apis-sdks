@@ -598,12 +598,12 @@ func (c *Client) DownloadActionOutputs(ctx context.Context, resPb *repb.ActionRe
 	for _, out := range outs {
 		path := filepath.Join(execRoot, out.Path)
 		if out.IsEmptyDirectory {
-			if err := os.MkdirAll(path, os.FileMode(0700)); err != nil {
+			if err := os.MkdirAll(path, os.FileMode(0744)); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0700)); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0744)); err != nil {
 			return err
 		}
 		// We create the symbolic links after all regular downloads are finished, because dangling
@@ -642,7 +642,6 @@ func (c *Client) DownloadActionOutputs(ctx context.Context, resPb *repb.ActionRe
 		if err := os.Chmod(filepath.Join(execRoot, out.Path), mode); err != nil {
 			return err
 		}
-
 	}
 	for _, out := range symlinks {
 		if err := os.Symlink(out.SymlinkTarget, filepath.Join(execRoot, out.Path)); err != nil {

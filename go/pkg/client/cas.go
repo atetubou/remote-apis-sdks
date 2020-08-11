@@ -632,14 +632,11 @@ func (c *Client) DownloadActionOutputs(ctx context.Context, resPb *repb.ActionRe
 		}
 	}
 	for _, out := range copies {
-		if err := copyFile(execRoot, downloads[out.Digest].Path, out.Path); err != nil {
-			return err
-		}
 		var mode os.FileMode = 0644
 		if out.IsExecutable {
 			mode = 0744
 		}
-		if err := os.Chmod(filepath.Join(execRoot, out.Path), mode); err != nil {
+		if err := copyFile(execRoot, downloads[out.Digest].Path, out.Path, mode); err != nil {
 			return err
 		}
 	}
@@ -651,7 +648,7 @@ func (c *Client) DownloadActionOutputs(ctx context.Context, resPb *repb.ActionRe
 	return nil
 }
 
-func copyFile(execRoot, from, to string) error {
+func copyFile(execRoot, from, to string, mode os.FileMode) error {
 	src := filepath.Join(execRoot, from)
 	st, err := os.Stat(src)
 	if err != nil {
@@ -669,7 +666,7 @@ func copyFile(execRoot, from, to string) error {
 	defer s.Close()
 
 	dst := filepath.Join(execRoot, to)
-	t, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, st.Mode())
+	t, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, mode)
 	if err != nil {
 		return err
 	}

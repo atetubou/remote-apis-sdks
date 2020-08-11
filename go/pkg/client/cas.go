@@ -598,12 +598,12 @@ func (c *Client) DownloadActionOutputs(ctx context.Context, resPb *repb.ActionRe
 	for _, out := range outs {
 		path := filepath.Join(execRoot, out.Path)
 		if out.IsEmptyDirectory {
-			if err := os.MkdirAll(path, os.FileMode(0777)); err != nil {
+			if err := os.MkdirAll(path, os.FileMode(0700)); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0777)); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), os.FileMode(0700)); err != nil {
 			return err
 		}
 		// We create the symbolic links after all regular downloads are finished, because dangling
@@ -635,6 +635,14 @@ func (c *Client) DownloadActionOutputs(ctx context.Context, resPb *repb.ActionRe
 		if err := copyFile(execRoot, downloads[out.Digest].Path, out.Path); err != nil {
 			return err
 		}
+		var mode os.FileMode = 0644
+		if out.IsExecutable {
+			mode = 0744
+		}
+		if err := os.Chmod(filepath.Join(execRoot, out.Path), mode); err != nil {
+			return err
+		}
+
 	}
 	for _, out := range symlinks {
 		if err := os.Symlink(out.SymlinkTarget, filepath.Join(execRoot, out.Path)); err != nil {
@@ -716,7 +724,7 @@ func (c *Client) DownloadFiles(ctx context.Context, execRoot string, outputs map
 					out := outputs[dg]
 					perm := os.FileMode(0644)
 					if out.IsExecutable {
-						perm = os.FileMode(0777)
+						perm = os.FileMode(0744)
 					}
 					if err := ioutil.WriteFile(filepath.Join(execRoot, out.Path), data, perm); err != nil {
 						return err
@@ -730,7 +738,7 @@ func (c *Client) DownloadFiles(ctx context.Context, execRoot string, outputs map
 					return err
 				}
 				if out.IsExecutable {
-					if err := os.Chmod(path, os.FileMode(0777)); err != nil {
+					if err := os.Chmod(path, os.FileMode(0744)); err != nil {
 						return err
 					}
 				}

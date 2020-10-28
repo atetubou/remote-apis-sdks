@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/chunker"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
@@ -703,6 +704,9 @@ func copyFile(execRoot, from, to string, mode os.FileMode) error {
 	return err
 }
 
+var mu sync.Mutex
+var Durations []time.Duration
+
 // DownloadFiles downloads the output files under |execRoot|.
 func (c *Client) DownloadFiles(ctx context.Context, execRoot string, outputs map[digest.Digest]*tree.Output) error {
 	if cap(c.casDownloaders) <= 0 {
@@ -767,9 +771,14 @@ func (c *Client) DownloadFiles(ctx context.Context, execRoot string, outputs map
 					if out.IsExecutable {
 						perm = c.ExecutableMode
 					}
+					now := time.Now()
 					if err := ioutil.WriteFile(filepath.Join(execRoot, out.Path), data, perm); err != nil {
 						return err
 					}
+					d := time.Since(now)
+					mu.Lock()
+					Durations = append(Durations, d)
+					mu.Unlock()
 				}
 			} else {
 				out := outputs[batch[0]]
@@ -794,5 +803,10 @@ func (c *Client) DownloadFiles(ctx context.Context, execRoot string, outputs map
 	log.V(3).Info("Waiting for remaining jobs")
 	err := eg.Wait()
 	log.V(3).Info("Done")
+
+	sort.Slice(Durations, func(i, j int) bool {
+		return Durations[i] < Durations[j]
+	})
+
 	return err
 }

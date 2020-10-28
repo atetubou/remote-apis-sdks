@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -772,7 +771,16 @@ func (c *Client) DownloadFiles(ctx context.Context, execRoot string, outputs map
 						perm = c.ExecutableMode
 					}
 					now := time.Now()
-					if err := ioutil.WriteFile(filepath.Join(execRoot, out.Path), data, perm); err != nil {
+					err := func() error {
+						f, err := os.OpenFile(filepath.Join(execRoot, out.Path), os.O_CREATE|os.O_WRONLY, perm)
+						if err != nil {
+							return err
+						}
+						defer f.Close()
+						_, err = f.Write(data)
+						return err
+					}()
+					if err != nil {
 						return err
 					}
 					d := time.Since(now)
